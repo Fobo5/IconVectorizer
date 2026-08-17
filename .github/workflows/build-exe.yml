@@ -1,0 +1,30 @@
+name: Build Windows exe
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install numpy opencv-python scikit-image scipy networkx sknw pillow cairosvg pyinstaller
+
+      - name: Build exe
+        run: |
+          pyinstaller --onefile --windowed --name IconVectorizer icon_vectorizer_gui.py
+
+      - name: Upload exe as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: IconVectorizer-windows
+          path: dist/IconVectorizer.exe
