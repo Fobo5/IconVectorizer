@@ -40,7 +40,10 @@ except ImportError:
 try:
     import cairosvg  # для превью SVG прямо в окне
     HAS_CAIROSVG = True
-except ImportError:
+except Exception:
+    # На чистой Windows часто нет системной библиотеки cairo (libcairo-2.dll),
+    # из-за чего импорт падает с OSError, а не ImportError. В любом случае
+    # превью SVG в окне — не критичная функция, просто отключаем её.
     HAS_CAIROSVG = False
 
 
