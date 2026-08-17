@@ -22,9 +22,10 @@ icon_vectorizer_gui.py
 import io
 import os
 import sys
+import tempfile
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageGrab
 
 # --- Двигатель конвертации (тот же код, что в icon_vectorizer.py) ---
 try:
@@ -62,6 +63,7 @@ class IconVectorizerApp:
         top.pack(fill="x")
 
         tk.Button(top, text="Открыть изображение…", command=self.open_image, width=22).pack(side="left", padx=10)
+        tk.Button(top, text="Вставить из буфера (Ctrl+V)", command=self.paste_from_clipboard, width=24).pack(side="left", padx=10)
         self.save_btn = tk.Button(top, text="Сохранить SVG…", command=self.save_svg, width=18, state="disabled")
         self.save_btn.pack(side="left", padx=10)
 
@@ -96,6 +98,13 @@ class IconVectorizerApp:
         # --- Drag & drop (опционально) ---
         self._setup_dnd()
 
+        # --- Вставка из буфера обмена по Ctrl+V ---
+        self.root.bind_all("<Control-v>", lambda _e: self.paste_from_clipboard())
+        self.root.bind_all("<Control-V>", lambda _e: self.paste_from_clipboard())  # на всякий случай (некоторые раскладки)
+
+        # Папка для временных файлов вставленных из буфера картинок.
+        self._paste_dir = tempfile.mkdtemp(prefix="icon_vectorizer_paste_")
+
     def _setup_dnd(self):
         try:
             from tkinterdnd2 import DND_FILES, TkinterDnD  # noqa
@@ -117,6 +126,34 @@ class IconVectorizerApp:
         )
         if path:
             self._load_image(path)
+
+    def paste_from_clipboard(self):
+        try:
+            img = ImageGrab.grabclipboard()
+        except Exception as exc:
+            messagebox.showerror("Ошибка", f"Не удалось получить доступ к буферу обмена:\n{exc}")
+            return
+
+        if img is None:
+            messagebox.showwarning(
+                "Буфер пуст",
+                "В буфере обмена нет изображения.\n"
+                "Сделайте скриншот области (например, Win+Shift+S) и попробуйте снова.",
+            )
+            return
+
+        # На некоторых системах grabclipboard() может вернуть список путей к файлам
+        # (если скопирован файл, а не картинка) — обработаем и такой случай.
+        if isinstance(img, list):
+            if not img:
+                messagebox.showwarning("Буфер пуст", "В буфере обмена нет изображения.")
+                return
+            self._load_image(img[0])
+            return
+
+        tmp_path = os.path.join(self._paste_dir, "clipboard_paste.png")
+        img.convert("RGBA").save(tmp_path, "PNG")
+        self._load_image(tmp_path)
 
     def _load_image(self, path):
         self.input_path = path
