@@ -33,7 +33,12 @@ STROKE_WIDTH = 1.5
 
 def load_binary_mask(path: str, invert: bool, threshold: int) -> np.ndarray:
     """Load image and return a boolean mask where True = 'ink' (the icon strokes)."""
-    img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+    # cv2.imread fails silently on Windows paths containing non-ASCII characters
+    # (e.g. Cyrillic usernames like C:/Users/Нина/...). Reading raw bytes first
+    # and decoding with cv2.imdecode works regardless of the path's characters.
+    with open(path, "rb") as f:
+        file_bytes = np.frombuffer(f.read(), dtype=np.uint8)
+    img = cv2.imdecode(file_bytes, cv2.IMREAD_UNCHANGED)
     if img is None:
         raise FileNotFoundError(f"Не удалось открыть изображение: {path}")
 
